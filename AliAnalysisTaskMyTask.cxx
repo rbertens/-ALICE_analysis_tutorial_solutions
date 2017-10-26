@@ -29,6 +29,9 @@
 #include "AliAODInputHandler.h"
 #include "AliAnalysisTaskMyTask.h"
 #include "AliPIDResponse.h"
+#include "AliVVertex.h"
+#include "AliCentrality.h"
+
 class AliAnalysisTaskMyTask;    // your analysis class
 
 using namespace std;            // std namespace: so you can do things like 'cout'
@@ -36,14 +39,17 @@ using namespace std;            // std namespace: so you can do things like 'cou
 ClassImp(AliAnalysisTaskMyTask) // classimp: necessary for root
 
 AliAnalysisTaskMyTask::AliAnalysisTaskMyTask() : AliAnalysisTaskSE(), 
-    fAOD(0), fOutputList(0), fHistPt(0), fHistPID(0), fHistNEvents(0), fPIDResponse(0)
+    fAOD(0), fOutputList(0), fHistPt(0), fHistVertexZ(0), fHistCentrality(0), fHistEtaPhi(0), fHistPID(0), fPIDResponse(0),
+    fHistPionPtC(0), fHistPionEtaC(0), fHistPionPhiC(0), fHistPionPtP(0), fHistPionEtaP(0), fHistPionPhiP(0)
 {
     // default constructor, don't allocate memory here!
     // this is used by root for IO purposes, it needs to remain empty
 }
 //_____________________________________________________________________________
 AliAnalysisTaskMyTask::AliAnalysisTaskMyTask(const char* name) : AliAnalysisTaskSE(name),
-    fAOD(0), fOutputList(0), fHistPt(0), fHistPID(0), fHistNEvents(0), fPIDResponse(0)
+    fAOD(0), fOutputList(0), fHistPt(0), fHistVertexZ(0), fHistCentrality(0), fHistEtaPhi(0), fHistPID(0), fPIDResponse(0),
+    fHistPionPtC(0), fHistPionEtaC(0), fHistPionPhiC(0), fHistPionPtP(0), fHistPionEtaP(0), fHistPionPhiP(0)
+
 {
     // constructor
     DefineInput(0, TChain::Class());    // define the input of the analysis: in this case we take a 'chain' of events
@@ -86,15 +92,39 @@ void AliAnalysisTaskMyTask::UserCreateOutputObjects()
     fOutputList->SetOwner(kTRUE);       // memory stuff: the list is owner of all objects it contains and will delete them
                                         // if requested (dont worry about this now)
 
-    // histograms with event information
-    fHistNEvents = new TH1F("fHistNEvents", "fHistNEvents", 5, -.5, 4.5);
-    fHistNEvents->Add(fHistNEvents);
-
     // example of a histogram
     fHistPt = new TH1F("fHistPt", "fHistPt", 100, 0, 10);       // create your histogra
+
+    // step 1
+    fHistVertexZ = new TH1F("fHistVertexZ", "fHistVertexZ", 50, -25, 25);
+    fHistCentrality = new TH1F("fHistCentrality", "fHistCentrality", 100, 0, 100);
+
+    // step 2
+    fHistEtaPhi = new TH2F("fHistEtaPhi", "fHistEtaPhi", 100, -1, 1, 100, 0, TMath::TwoPi());
     fHistPID = new TH2F("fHistPID", "fHistPID", 100, 0, 10, 100, 0, 1000);
 
+
+    // step 3
+    fHistPionPtC = new TH1F("fHistPionPtC", "fHistPionPtC", 100, 0, 10);
+    fHistPionEtaC = new TH1F("fHistPionEtaC", "fHistPionEtaC", 100, -1, 1);
+    fHistPionPhiC = new TH1F("fHistPionPhiC", "fHistPionPhiC", 100, 0, TMath::TwoPi());
+    fHistPionPtP = new TH1F("fHistPionPtP", "fHistPionPtP", 100, 0, 10);
+    fHistPionEtaP = new TH1F("fHistPionEtaP", "fHistPionEtaP", 100, -1, 1);
+    fHistPionPhiP = new TH1F("fHistPionPhiP", "fHistPionPhiP", 100, 0, TMath::TwoPi());
+
+
+
+    fOutputList->Add(fHistPionPtC);
+    fOutputList->Add(fHistPionEtaC);
+    fOutputList->Add(fHistPionPhiC);
+    fOutputList->Add(fHistPionPtP);
+    fOutputList->Add(fHistPionEtaP);
+    fOutputList->Add(fHistPionPhiP);
+
     fOutputList->Add(fHistPt);          // don't forget to add it to the list! the list will be written to file, so if you want
+    fOutputList->Add(fHistVertexZ);
+    fOutputList->Add(fHistCentrality);
+    fOutputList->Add(fHistEtaPhi);
                                         // your histogram in the output file, add it to the list!
     fOutputList->Add(fHistPID);
     PostData(1, fOutputList);           // postdata will notify the analysis manager of changes / updates to the 
@@ -113,6 +143,15 @@ void AliAnalysisTaskMyTask::UserExec(Option_t *)
                                                         // there's another event format (ESD) which works in a similar wya
                                                         // but is more cpu/memory unfriendly. for now, we'll stick with aod's
     if(!fAOD) return;                                   // if the pointer to the event is empty (getting it failed) skip this event
+
+
+    Float_t vertexZ = fAOD->GetPrimaryVertex()->GetZ();
+    Float_t centrality = fAOD->GetCentrality()->GetCentralityPercentile("V0M");
+
+
+    fHistVertexZ->Fill(vertexZ);
+    fHistCentrality->Fill(centrality);
+
         // example part: i'll show how to loop over the tracks in an event 
         // and extract some information from them which we'll store in a histogram
     Int_t iTracks(fAOD->GetNumberOfTracks());           // see how many tracks there are in the event
@@ -122,8 +161,22 @@ void AliAnalysisTaskMyTask::UserExec(Option_t *)
         if(!track->TestFilterBit(1)) continue;
 
         fHistPt->Fill(track->Pt());                     // plot the pt value of the track in a histogram
+        fHistEtaPhi->Fill(track->Eta(), track->Phi());
+
         if(TMath::Abs(fPIDResponse->NumberOfSigmasTPC(track, AliPID::kPion)) < 3 ) {
             fHistPID->Fill(track->P(), track->GetTPCsignal());
+
+            // centrality selection
+            if(centrality > 0 && centrality < 10) {
+                fHistPionPtC->Fill(track->Pt());
+                fHistPionEtaC->Fill(track->Eta());
+                fHistPionPhiC->Fill(track->Phi());
+            } else if (centrality > 50 && centrality < 60) {
+                fHistPionPtP->Fill(track->Pt());
+                fHistPionEtaP->Fill(track->Eta());
+                fHistPionPhiP->Fill(track->Phi());
+
+            }
         };
     
     }                                                   // continue until all the tracks are processed

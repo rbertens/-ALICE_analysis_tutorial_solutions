@@ -26,9 +26,25 @@ class AliAnalysisTaskMyTask : public AliAnalysisTaskSE
     private:
         AliAODEvent*            fAOD;           //! input event
         TList*                  fOutputList;    //! output list
+
+        // some histograms
         TH1F*                   fHistPt;        //! dummy histogram
+
+        // step 1
+        TH1F*                   fHistVertexZ;   //! z position of vertex
+        TH1F*                   fHistCentrality;//! centrality 
+
+        // step 2
+        TH2F*                   fHistEtaPhi;    // track eta phi
+        TH1F*                   fHistPionPtC;   // 
+        TH1F*                   fHistPionEtaC;  //
+        TH1F*                   fHistPionPhiC;
+        TH1F*                   fHistPionPtP;
+        TH1F*                   fHistPionEtaP;
+        TH1F*                   fHistPionPhiP;
+
+
         TH2F*                   fHistPID;       //! pid info
-        TH1F*                   fHistNEvents;   //! accepted event for different selections
         AliPIDResponse*         fPIDResponse;   //! pid response
 
         AliAnalysisTaskMyTask(const AliAnalysisTaskMyTask&); // not implemented
