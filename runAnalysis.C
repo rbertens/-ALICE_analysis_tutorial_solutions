@@ -27,14 +27,17 @@ void runAnalysis()
     mgr->SetInputEventHandler(aodH);
 
 
-
     // compile the class and load the add task macro
     // here we have to differentiate between using the just-in-time compiler
     // from root6, or the interpreter of root5
 #if !defined (__CINT__) || defined (__CLING__)
+    gInterpreter->LoadMacro("$ALICE_ROOT/ANALYSIS/macros/AddTaskPIDResponse.C");
+    gInterpreter->ExecuteMacro(AddTaskPIDResponse());
     gInterpreter->LoadMacro("AliAnalysisTaskMyTask.cxx++g");
     AliAnalysisTaskMyTask *task = reinterpret_cast<AliAnalysisTaskMyTask*>(gInterpreter->ExecuteMacro("AddMyTask.C"));
 #else
+    gROOT->LoadMacro("$ALICE_ROOT/ANALYSIS/macros/AddTaskPIDResponse.C");
+    AddTaskPIDResponse();
     gROOT->LoadMacro("AliAnalysisTaskMyTask.cxx++g");
     gROOT->LoadMacro("AddMyTask.C");
     AliAnalysisTaskMyTask *task = AddMyTask();
