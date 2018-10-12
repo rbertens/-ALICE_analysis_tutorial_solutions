@@ -30,7 +30,8 @@
 #include "AliAnalysisTaskMyTask.h"
 #include "AliPIDResponse.h"
 #include "AliVVertex.h"
-#include "AliCentrality.h"
+//#include "AliCentrality.h"
+#include "AliMultSelection.h"
 
 class AliAnalysisTaskMyTask;    // your analysis class
 
@@ -146,8 +147,10 @@ void AliAnalysisTaskMyTask::UserExec(Option_t *)
 
 
     Float_t vertexZ = fAOD->GetPrimaryVertex()->GetZ();
-    Float_t centrality = fAOD->GetCentrality()->GetCentralityPercentile("V0M");
 
+    Float_t centrality(0);
+    AliMultSelection *multSelection =static_cast<AliMultSelection*>(fAOD->FindListObject("MultSelection"));
+    if(multSelection) centrality = multSelection->GetMultiplicityPercentile("V0M");
 
     fHistVertexZ->Fill(vertexZ);
     fHistCentrality->Fill(centrality);

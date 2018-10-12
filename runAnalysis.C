@@ -1,17 +1,12 @@
-#if !defined (__CINT__) || defined (__CLING__)
-#include "AliAnalysisAlien.h"
-#include "AliAnalysisManager.h"
-#include "AliAODInputHandler.h"
 #include "AliAnalysisTaskMyTask.h"
-#endif
 
 void runAnalysis()
 {
     // set if you want to run the analysis locally (kTRUE), or on grid (kFALSE)
-    Bool_t local = kTRUE;
+    Bool_t local = kFALSE;
     // if you run on grid, specify test mode (kTRUE, only root5) or full grid model (kFALSE)
-    Bool_t gridTest = kFALSE;
-    
+    Bool_t gridTest = kTRUE;
+
     // since we will compile a class, tell root where to look for headers  
 #if !defined (__CINT__) || defined (__CLING__)
     gInterpreter->ProcessLine(".include $ROOTSYS/include");
@@ -20,7 +15,7 @@ void runAnalysis()
     gROOT->ProcessLine(".include $ROOTSYS/include");
     gROOT->ProcessLine(".include $ALICE_ROOT/include");
 #endif
-     
+
     // create the analysis manager
     AliAnalysisManager *mgr = new AliAnalysisManager("AnalysisTaskExample");
     AliAODInputHandler *aodH = new AliAODInputHandler();
@@ -31,11 +26,15 @@ void runAnalysis()
     // here we have to differentiate between using the just-in-time compiler
     // from root6, or the interpreter of root5
 #if !defined (__CINT__) || defined (__CLING__)
-    gInterpreter->LoadMacro("$ALICE_ROOT/ANALYSIS/macros/AddTaskPIDResponse.C");
-    gInterpreter->ExecuteMacro(AddTaskPIDResponse());
+    TMacro multSelection(gSystem->ExpandPathName("$ALICE_PHYSICS/OADB/COMMON/MULTIPLICITY/macros/AddTaskMultSelection.C"));
+    AliMultSelectionTask* multSelectionTask = reinterpret_cast<AliMultSelectionTask*>(multSelection.Exec());
+    TMacro PIDadd(gSystem->ExpandPathName("$ALICE_ROOT/ANALYSIS/macros/AddTaskPIDResponse.C"));
+    AliAnalysisTaskPIDResponse* PIDresponseTask = reinterpret_cast<AliAnalysisTaskPIDResponse*>(PIDadd.Exec());
     gInterpreter->LoadMacro("AliAnalysisTaskMyTask.cxx++g");
     AliAnalysisTaskMyTask *task = reinterpret_cast<AliAnalysisTaskMyTask*>(gInterpreter->ExecuteMacro("AddMyTask.C"));
 #else
+    gROOT->LoadMacro("$ALICE_PHYSICS/OADB/COMMON/MULTIPLICITY/macros/AddTaskMultSelection.C");
+    AliMultSelectionTask* multSelectionTask = AddTaskMultSelection(kFALSE);
     gROOT->LoadMacro("$ALICE_ROOT/ANALYSIS/macros/AddTaskPIDResponse.C");
     AddTaskPIDResponse();
     gROOT->LoadMacro("AliAnalysisTaskMyTask.cxx++g");
